@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request, abort
+from lib.data import SampleFactory
 
 app = Flask(__name__)
 
@@ -34,6 +35,13 @@ def get_task():
         abort(400)
     return jsonify({'tasks': tasks})
 
+
+@app.route('/persist', methods=['POST'])
+def persist():
+    f = SampleFactory()
+    sample = f.from_json(request.get_json())
+    print(sample)
+    return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
     app.run(debug=True)
