@@ -292,8 +292,8 @@ def persist():
                     INSERT INTO resource (
                         sample_id, 
                         hash_sha256,
-                        offset,
-                        size,
+                        `offset`,
+                        `size`,
                         actual_size,
                         entropy,
                         ssdeep,
