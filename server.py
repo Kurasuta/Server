@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, abort, g
 from lib.data import SampleFactory
 import os
 import psycopg2
+from raven.contrib.flask import Sentry
 
 app = Flask(__name__)
 app.config.from_object(__name__)  # load config from this file , flaskr.py
@@ -272,6 +273,7 @@ def persist():
 
 
 if __name__ == '__main__':
+    sentry = Sentry(app, dsn=os.environ['RAVEN_CLIENT_STRING'])
     app.run(
         port=int(os.environ['FLASK_PORT']) if 'FLASK_PORT' in os.environ else None,
         debug='FLASK_DEBUG' in os.environ
