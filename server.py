@@ -1,8 +1,13 @@
 from flask import Flask, jsonify, request, abort, g
 from lib.data import SampleFactory
 import os
+import logging
 import psycopg2
-from raven.contrib.flask import Sentry
+
+logging.basicConfig(format='%(asctime)s %(message)s')
+logger = logging.getLogger('KurasutaBackendApi')
+debugging_enabled = 'FLASK_DEBUG' in os.environ
+logger.setLevel(logging.DEBUG if debugging_enabled else logging.WARNING)
 
 app = Flask(__name__)
 app.config.from_object(__name__)  # load config from this file , flaskr.py
@@ -91,6 +96,29 @@ def ensure_resource_pair(conn, pair_name, content_id, content_str):
     return result[0]
 
 
+class InvalidUsage(Exception):
+    status_code = 400
+
+    def __init__(self, message, status_code=None, payload=None):
+        Exception.__init__(self)
+        self.message = message
+        if status_code is not None:
+            self.status_code = status_code
+        self.payload = payload
+
+    def to_dict(self):
+        rv = dict(self.payload or ())
+        rv['message'] = self.message
+        return rv
+
+
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
+
+
 @app.route('/count', methods=['GET'])
 def count():
     conn = get_db()
@@ -102,7 +130,11 @@ def count():
 @app.route('/persist', methods=['POST'])
 def persist():
     f = SampleFactory()
-    sample = f.from_json(request.get_json())
+    json_data = request.get_json()
+    if json_data is None:
+        raise InvalidUsage('JSON data could not be decoded (None)', status_code=400)
+
+    sample = f.from_json(json_data)
     conn = get_db()
     with conn.cursor() as cursor:
         cursor.execute('''SELECT id FROM sample WHERE (hash_sha256 = %s)''', (sample.hash_sha256,))
@@ -281,8 +313,13 @@ def persist():
 
 
 if __name__ == '__main__':
-    sentry = Sentry(app, dsn=os.environ['RAVEN_CLIENT_STRING'])
+    if 'RAVEN_CLIENT_STRING' in os.environ:
+        from raven.contrib.flask import Sentry
+
+        sentry = Sentry(app, dsn=os.environ['RAVEN_CLIENT_STRING'])
+    else:
+        logger.warning('Environment variable RAVEN_CLIENT_STRING does not exist. No logging to Sentry is performed.')
     app.run(
         port=int(os.environ['FLASK_PORT']) if 'FLASK_PORT' in os.environ else None,
-        debug='FLASK_DEBUG' in os.environ
+        debug=debugging_enabled
     )
