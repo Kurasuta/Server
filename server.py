@@ -276,12 +276,18 @@ def persist():
                 ))
         if sample.resources:
             for i, resource in enumerate(sample.resources):
-                if resource.type_id and resource.type_str:
-                    type_pair_id = ensure_resource_pair(conn, 'type', resource.type_id, resource.type_str)
-                if resource.type_id and resource.type_str:
-                    name_pair_id = ensure_resource_pair(conn, 'name', resource.type_id, resource.type_str)
-                if resource.type_id and resource.type_str:
-                    language_pair_id = ensure_resource_pair(conn, 'language', resource.type_id, resource.type_str)
+                type_pair_id = ensure_resource_pair(conn, 'type', resource.type_id, resource.type_str) \
+                    if resource.type_id and resource.type_str \
+                    else None
+
+                name_pair_id = ensure_resource_pair(conn, 'name', resource.type_id, resource.type_str) \
+                    if resource.type_id and resource.type_str \
+                    else None
+
+                language_pair_id = ensure_resource_pair(conn, 'language', resource.type_id, resource.type_str) \
+                    if resource.type_id and resource.type_str \
+                    else None
+
                 cursor.execute('''
                     INSERT INTO resource (
                         sample_id, 
@@ -304,7 +310,6 @@ def persist():
                     resource.actual_size,
                     resource.entropy,
                     resource.ssdeep,
-                    resource.typ,
                     type_pair_id,
                     name_pair_id,
                     language_pair_id,
