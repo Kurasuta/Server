@@ -103,7 +103,6 @@ def persist():
     magic_id = ensure_row(conn, 'magic', 'description', sample.magic) if sample.magic else None
     export_name_id = ensure_row(conn, 'export_name', 'content', sample.export_name) if sample.export_name else None
 
-
     with conn.cursor() as cursor:
         if sample.code_histogram:
             cursor.execute('INSERT INTO byte_histogram (%s) VALUES(%s) RETURNING id' % (
@@ -273,4 +272,7 @@ def persist():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(
+        port=int(os.environ['FLASK_PORT']) if 'FLASK_PORT' in os.environ else None,
+        debug='FLASK_DEBUG' in os.environ
+    )
