@@ -276,9 +276,12 @@ def persist():
                 ))
         if sample.resources:
             for i, resource in enumerate(sample.resources):
-                type_pair_id = ensure_resource_pair(conn, 'type', resource.type_id, resource.type_str)
-                name_pair_id = ensure_resource_pair(conn, 'name', resource.type_id, resource.type_str)
-                language_pair_id = ensure_resource_pair(conn, 'language', resource.type_id, resource.type_str)
+                if resource.type_id and resource.type_str:
+                    type_pair_id = ensure_resource_pair(conn, 'type', resource.type_id, resource.type_str)
+                if resource.type_id and resource.type_str:
+                    name_pair_id = ensure_resource_pair(conn, 'name', resource.type_id, resource.type_str)
+                if resource.type_id and resource.type_str:
+                    language_pair_id = ensure_resource_pair(conn, 'language', resource.type_id, resource.type_str)
                 cursor.execute('''
                     INSERT INTO resource (
                         sample_id, 
