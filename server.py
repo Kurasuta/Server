@@ -91,6 +91,14 @@ def ensure_resource_pair(conn, pair_name, content_id, content_str):
     return result[0]
 
 
+@app.route('/count', methods=['GET'])
+def count():
+    conn = get_db()
+    with conn.cursor() as cursor:
+        cursor.execute('SELECT COUNT(id) FROM sample')
+        return jsonify({'count': cursor.fetchone()[0]})
+
+
 @app.route('/persist', methods=['POST'])
 def persist():
     f = SampleFactory()
