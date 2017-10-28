@@ -219,7 +219,7 @@ def persist():
                         VALUES(%s, %s, %s, %s, %s, %s)
                 ''', (
                     sample_id,
-                    debug_directory.timestmap,
+                    debug_directory.timestamp,
                     path_id,
                     debug_directory.age,
                     debug_directory.signature,
