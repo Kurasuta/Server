@@ -205,9 +205,10 @@ def persist():
         )
         sample_id = cursor.fetchone()[0]
 
-        for peyd_description in sample.peyd:
-            peyd_id = ensure_row(conn, 'peyd', 'description', peyd_description)
-            cursor.execute('INSERT INTO sample_has_peyd (sample_id, peyd_id) VALUES(%s, %s)', (sample_id, peyd_id))
+        if sample.peyd:
+            for peyd_description in sample.peyd:
+                peyd_id = ensure_row(conn, 'peyd', 'description', peyd_description)
+                cursor.execute('INSERT INTO sample_has_peyd (sample_id, peyd_id) VALUES(%s, %s)', (sample_id, peyd_id))
 
         if sample.debug_directories:
             for debug_directory in sample.debug_directories:
