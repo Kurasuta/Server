@@ -247,7 +247,10 @@ def persist():
         if sample.heuristic_iocs:
             for ioc in sample.heuristic_iocs:
                 ioc_id = ensure_row(conn, 'ioc', 'content', ioc)
-                cursor('INSERT INTO sample_has_heuristic_ioc (sample_id, ioc_id) VALUES(%s, %s)', (sample_id, ioc_id))
+                cursor.execute(
+                    'INSERT INTO sample_has_heuristic_ioc (sample_id, ioc_id) VALUES(%s, %s)',
+                    (sample_id, ioc_id)
+                )
 
         if sample.sections:
             for i, section in enumerate(sample.sections):
