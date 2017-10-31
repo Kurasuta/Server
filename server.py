@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, abort, g
 from lib.data import SampleFactory
+import string
 import os
 import logging
 import psycopg2
@@ -127,14 +128,32 @@ def count():
         return jsonify({'count': cursor.fetchone()[0]})
 
 
-@app.route('/persist', methods=['POST'])
-def persist():
+@app.route('/sha256/<sha256>', methods=['GET'])
+def get_sha256(sha256):
+    if len(sha256) != 64:
+        raise InvalidUsage('SHA256 hash needs to be of length 64', status_code=400)
+    if not all(c in string.hexdigits for c in sha256):
+        raise InvalidUsage('SHA256 hash may only contain hex chars', status_code=400)
+
+    return jsonify({'TODO': 1})
+
+
+@app.route('/sha256/<sha256>', methods=['POST'])
+def persist(sha256):
+    if len(sha256) != 64:
+        raise InvalidUsage('SHA256 hash needs to be of length 64', status_code=400)
+    if not all(c in string.hexdigits for c in sha256):
+        raise InvalidUsage('SHA256 hash may only contain hex chars', status_code=400)
+
     f = SampleFactory()
     json_data = request.get_json()
     if json_data is None:
         raise InvalidUsage('JSON data could not be decoded (None)', status_code=400)
 
     sample = f.from_json(json_data)
+    if sha256 != sample.hash_sha256:
+        raise InvalidUsage('SHA256 in URL and body missmatch', status_code=400)
+
     conn = get_db()
     with conn.cursor() as cursor:
         cursor.execute('''SELECT id FROM sample WHERE (hash_sha256 = %s)''', (sample.hash_sha256,))
