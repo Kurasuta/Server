@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, g
 from lib.sample import SampleFactory
 from lib.task import TaskFactory
 from lib.flask import InvalidUsage
+from lib.general import KurasutaDatabase
 import string
 import os
 import logging
@@ -59,32 +60,6 @@ def get_task():
     return jsonify(task.to_json() if task else {})
 
 
-def ensure_row(conn, table, field, value):
-    select_sql = 'SELECT id FROM %s WHERE %s = %%s' % (table, field)
-    insert_sql = 'INSERT INTO %s (%s) VALUES(%%s) RETURNING id' % (table, field)
-    with conn.cursor() as cursor:
-        cursor.execute(select_sql, (value,))
-        result = cursor.fetchone()
-    if not result:
-        with conn.cursor() as cursor:
-            cursor.execute(insert_sql, (value,))
-            result = cursor.fetchone()
-    return result[0]
-
-
-def ensure_resource_pair(conn, pair_name, content_id, content_str):
-    select_sql = 'SELECT id FROM resource_%s_pair WHERE (content_id = %%s) AND (content_str = %%s)' % (pair_name,)
-    insert_sql = 'INSERT INTO resource_%s_pair (content_id, content_str) VALUES(%%s) RETURNING id' % (pair_name,)
-    with conn.cursor() as cursor:
-        cursor.execute(select_sql, (content_id, content_str))
-        result = cursor.fetchone()
-    if not result:
-        with conn.cursor() as cursor:
-            cursor.execute(insert_sql, (content_id, content_str))
-            result = cursor.fetchone()
-    return result[0]
-
-
 @app.errorhandler(InvalidUsage)
 def handle_invalid_usage(error):
     response = jsonify(error.to_dict())
@@ -121,20 +96,28 @@ def persist(sha256):
     if json_data is None:
         raise InvalidUsage('JSON data could not be decoded (None)', status_code=400)
 
+    connection = get_db()
+    kurasuta_database = KurasutaDatabase(connection)
+    if 'task_id' in json_data:
+        TaskFactory(connection).mark_as_completed(int(json_data['task_id']))
+
     sample = SampleFactory().from_json(json_data)
     if sha256 != sample.hash_sha256:
         raise InvalidUsage('SHA256 in URL and body missmatch', status_code=400)
 
-    conn = get_db()
-    with conn.cursor() as cursor:
+    with connection.cursor() as cursor:
         cursor.execute('''SELECT id FROM sample WHERE (hash_sha256 = %s)''', (sample.hash_sha256,))
         if cursor.fetchone():
-            return jsonify({'status': 'EXISTS'})
+            if 'task_id' not in json_data:
+                return jsonify({'status': 'EXISTS'})
+            else:
+                kurasuta_database.delete_sample(sample.hash_sha256)
 
-    magic_id = ensure_row(conn, 'magic', 'description', sample.magic) if sample.magic else None
-    export_name_id = ensure_row(conn, 'export_name', 'content', sample.export_name) if sample.export_name else None
+    magic_id = kurasuta_database.ensure_row('magic', 'description', sample.magic) if sample.magic else None
+    export_name_id = kurasuta_database.ensure_row('export_name', 'content', sample.export_name) \
+        if sample.export_name else None
 
-    with conn.cursor() as cursor:
+    with connection.cursor() as cursor:
         if sample.code_histogram:
             cursor.execute('INSERT INTO byte_histogram (%s) VALUES(%s) RETURNING id' % (
                 ', '.join(['byte_%02x' % i for i in range(256)]),
@@ -197,12 +180,12 @@ def persist(sha256):
 
         if sample.peyd:
             for peyd_description in sample.peyd:
-                peyd_id = ensure_row(conn, 'peyd', 'description', peyd_description)
+                peyd_id = kurasuta_database.ensure_row('peyd', 'description', peyd_description)
                 cursor.execute('INSERT INTO sample_has_peyd (sample_id, peyd_id) VALUES(%s, %s)', (sample_id, peyd_id))
 
         if sample.debug_directories:
             for debug_directory in sample.debug_directories:
-                path_id = ensure_row(conn, 'path', 'content', debug_directory.path)
+                path_id = kurasuta_database.ensure_row('path', 'content', debug_directory.path)
                 cursor.execute('''
                     INSERT INTO debug_directory
                         (sample_id, timestamp, path_id, age, signature, guid)
@@ -218,15 +201,15 @@ def persist(sha256):
 
         if sample.exports:
             for export in sample.exports:
-                name_id = ensure_row(conn, 'export_symbol_name', 'content', export.name)
+                name_id = kurasuta_database.ensure_row('export_symbol_name', 'content', export.name)
                 cursor.execute('''
                     INSERT INTO export_symbol (sample_id, address, ordinal, name_id) VALUES(%s, %s, %s, %s)
                 ''', (sample_id, export.address, export.ordinal, name_id))
 
         if sample.imports:
             for imp in sample.imports:
-                import_name_id = ensure_row(conn, 'import_name', 'content', imp.name)
-                dll_name_id = ensure_row(conn, 'dll_name', 'content', imp.dll_name)
+                import_name_id = kurasuta_database.ensure_row('import_name', 'content', imp.name)
+                dll_name_id = kurasuta_database.ensure_row('dll_name', 'content', imp.dll_name)
                 cursor.execute('''
                     INSERT INTO import 
                     (sample_id, dll_name_id, address, name_id) 
@@ -236,7 +219,7 @@ def persist(sha256):
 
         if sample.heuristic_iocs:
             for ioc in sample.heuristic_iocs:
-                ioc_id = ensure_row(conn, 'ioc', 'content', ioc)
+                ioc_id = kurasuta_database.ensure_row('ioc', 'content', ioc)
                 cursor.execute(
                     'INSERT INTO sample_has_heuristic_ioc (sample_id, ioc_id) VALUES(%s, %s)',
                     (sample_id, ioc_id)
@@ -244,7 +227,7 @@ def persist(sha256):
 
         if sample.sections:
             for i, section in enumerate(sample.sections):
-                section_name_id = ensure_row(conn, 'section_name', 'content', section.name)
+                section_name_id = kurasuta_database.ensure_row('section_name', 'content', section.name)
                 cursor.execute('''
                     INSERT INTO section (
                         sample_id, 
@@ -270,17 +253,17 @@ def persist(sha256):
                 ))
         if sample.resources:
             for i, resource in enumerate(sample.resources):
-                type_pair_id = ensure_resource_pair(conn, 'type', resource.type_id, resource.type_str) \
+                type_pair_id = kurasuta_database.ensure_resource_pair('type', resource.type_id, resource.type_str) \
                     if resource.type_id and resource.type_str \
                     else None
 
-                name_pair_id = ensure_resource_pair(conn, 'name', resource.type_id, resource.type_str) \
+                name_pair_id = kurasuta_database.ensure_resource_pair('name', resource.type_id, resource.type_str) \
                     if resource.type_id and resource.type_str \
                     else None
 
-                language_pair_id = ensure_resource_pair(conn, 'language', resource.type_id, resource.type_str) \
-                    if resource.type_id and resource.type_str \
-                    else None
+                language_pair_id = kurasuta_database.ensure_resource_pair(
+                    'language', resource.type_id, resource.type_str
+                ) if resource.type_id and resource.type_str else None
 
                 cursor.execute('''
                     INSERT INTO resource (
@@ -309,7 +292,7 @@ def persist(sha256):
                     language_pair_id,
                     i
                 ))
-    conn.commit()
+    connection.commit()
 
     return jsonify({'status': 'ok'})
 
