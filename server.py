@@ -1,5 +1,7 @@
-from flask import Flask, jsonify, request, abort, g
+from flask import Flask, jsonify, request, g
 from lib.sample import SampleFactory
+from lib.task import TaskFactory
+from lib.flask import InvalidUsage
 import string
 import os
 import logging
@@ -38,24 +40,23 @@ def close_db(error):
         g.db.close()
 
 
-supported = ['test']
-
-
-@app.route('/', methods=['POST'])
+@app.route('/task', methods=['POST'])
 def get_task():
-    selected_plugin = ''
-    if not request.json or not 'plugins' in request.json:
-        abort(400)
-    if len(request.json.get('plugins')) == 0:
-        abort(400)
-    for plugin in request.json.get('plugins'):
-        if plugin in supported:
-            selected_plugin = plugin
-            break
-    else:
-        abort(400)
-    task = []
-    return jsonify({'task': task})
+    supported = ('PEMetadata',)
+
+    json_data = request.get_json()
+    if json_data is None:
+        raise InvalidUsage('JSON data could not be decoded (None)', status_code=400)
+
+    connection = get_db()
+    task_factory = TaskFactory(connection)
+    task_request = task_factory.request_from_json(json_data)
+    if task_request.plugins != supported:
+        raise InvalidUsage('Invalid plugin array')
+
+    task = task_factory.random_unassigned(task_request)
+    connection.commit()
+    return jsonify(task.to_json() if task else {})
 
 
 def ensure_row(conn, table, field, value):
@@ -82,22 +83,6 @@ def ensure_resource_pair(conn, pair_name, content_id, content_str):
             cursor.execute(insert_sql, (content_id, content_str))
             result = cursor.fetchone()
     return result[0]
-
-
-class InvalidUsage(Exception):
-    status_code = 400
-
-    def __init__(self, message, status_code=None, payload=None):
-        Exception.__init__(self)
-        self.message = message
-        if status_code is not None:
-            self.status_code = status_code
-        self.payload = payload
-
-    def to_dict(self):
-        rv = dict(self.payload or ())
-        rv['message'] = self.message
-        return rv
 
 
 @app.errorhandler(InvalidUsage)
@@ -132,12 +117,11 @@ def persist(sha256):
     if not all(c in string.hexdigits for c in sha256):
         raise InvalidUsage('SHA256 hash may only contain hex chars', status_code=400)
 
-    f = SampleFactory()
     json_data = request.get_json()
     if json_data is None:
         raise InvalidUsage('JSON data could not be decoded (None)', status_code=400)
 
-    sample = f.from_json(json_data)
+    sample = SampleFactory().from_json(json_data)
     if sha256 != sample.hash_sha256:
         raise InvalidUsage('SHA256 in URL and body missmatch', status_code=400)
 
