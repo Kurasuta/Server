@@ -43,7 +43,7 @@ def close_db(error):
 
 @app.route('/task', methods=['POST'])
 def get_task():
-    supported = ('PEMetadata',)
+    supported = ('PEMetadata', 'R2Disassembly')
 
     json_data = request.get_json()
     if json_data is None:
@@ -52,7 +52,7 @@ def get_task():
     connection = get_db()
     task_factory = TaskFactory(connection)
     task_request = task_factory.request_from_json(json_data)
-    if task_request.plugins != supported:
+    if set(task_request.plugins) - set(supported):
         raise InvalidUsage('Invalid plugin array')
 
     task = task_factory.random_unassigned(task_request)
