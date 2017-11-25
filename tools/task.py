@@ -5,7 +5,7 @@ import argparse
 import sys
 
 parser = argparse.ArgumentParser()
-parser.add_argument('type', action='store', choices=['PEMetadata'])
+parser.add_argument('type', action='store', choices=['PEMetadata', 'R2Disassembly'])
 parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
@@ -28,3 +28,5 @@ if args.existing_hash:
                 Json({'hash_sha256': hash_sha256})
             ))
     connection.commit()
+if args.file_name:
+    raise NotImplemented()
