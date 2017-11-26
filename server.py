@@ -7,6 +7,7 @@ import string
 import os
 import logging
 import psycopg2
+from psycopg2.extras import Json
 
 logging.basicConfig(format='%(asctime)s %(message)s')
 logger = logging.getLogger('KurasutaBackendApi')
@@ -142,7 +143,7 @@ def store_assembly(cursor, sample, sample_id):
         ''', (
             sample_id, f.offset, f.size, f.real_size, f.name, f.calltype, f.cc, f.cost, f.ebbs, f.edges, f.indegree,
             f.nargs, f.nbbs, f.nlocals, f.outdegree, f.type, f.opcodes_sha256, f.opcodes_crc32,
-            f.cleaned_opcodes_sha256, f.cleaned_opcodes_crc32, f.opcodes
+            f.cleaned_opcodes_sha256, f.cleaned_opcodes_crc32, Json(f.opcodes)
         ))
 
 
