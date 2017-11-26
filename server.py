@@ -109,24 +109,41 @@ def persist(sha256):
 
     with connection.cursor() as cursor:
         cursor.execute('''SELECT id FROM sample WHERE (hash_sha256 = %s)''', (sample.hash_sha256,))
-        if cursor.fetchone():
+        row = cursor.fetchone()
+        if row:
+            sample_id = row[0]
             if not task:
                 return jsonify({'status': 'EXISTS'})
             if task.type == 'PEMetadata':  # in case of new PE metadata, delete existing database entry
                 kurasuta_database.delete_sample(sample.hash_sha256)
-
+        else:
+            sample_id = None
         if task.type == 'PEMetadata':
             store_metadata(cursor, kurasuta_database, sample)
         elif task.type == 'R2Disassembly':
-            store_assembly(cursor, kurasuta_database, sample)
+            if sample_id is None:
+                raise InvalidUsage('sample does not exist in database, no R2Disassembly can be stored')
+            store_assembly(cursor, sample, sample_id)
 
     connection.commit()
 
     return jsonify({'status': 'ok'})
 
 
-def store_assembly(cursor, kurasuta_database, sample):
-    pass
+def store_assembly(cursor, sample, sample_id):
+    cursor.execute('DELETE FROM sample_function WHERE (sample_id = %s)', (sample_id,))
+    for f in sample.functions:
+        cursor.execute('''
+            INSERT INTO sample_function
+                (sample_id, "offset", "size", "real_size", name, calltype, cc, cost, ebbs, edges, indegree, nargs,
+                nbbs, nlocals, outdegree, "type", opcodes_sha256, opcodes_crc32, cleaned_opcodes_sha256,
+                cleaned_opcodes_crc32)
+            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            sample_id, f.offset, f.size, f.real_size, f.name, f.calltype, f.cc, f.cost, f.ebbs, f.edges, f.indegree,
+            f.nargs, f.nbbs, f.nlocals, f.outdegree, f.type, f.opcodes_sha256, f.opcodes_crc32,
+            f.cleaned_opcodes_sha256, f.cleaned_opcodes_crc32
+        ))
 
 
 def store_metadata(cursor, kurasuta_database, sample):
