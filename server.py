@@ -137,12 +137,12 @@ def store_assembly(cursor, sample, sample_id):
             INSERT INTO sample_function
                 (sample_id, "offset", "size", "real_size", name, calltype, cc, cost, ebbs, edges, indegree, nargs,
                 nbbs, nlocals, outdegree, "type", opcodes_sha256, opcodes_crc32, cleaned_opcodes_sha256,
-                cleaned_opcodes_crc32)
-            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                cleaned_opcodes_crc32, "raw")
+            VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             sample_id, f.offset, f.size, f.real_size, f.name, f.calltype, f.cc, f.cost, f.ebbs, f.edges, f.indegree,
             f.nargs, f.nbbs, f.nlocals, f.outdegree, f.type, f.opcodes_sha256, f.opcodes_crc32,
-            f.cleaned_opcodes_sha256, f.cleaned_opcodes_crc32
+            f.cleaned_opcodes_sha256, f.cleaned_opcodes_crc32, f.raw
         ))
 
 
