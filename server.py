@@ -75,22 +75,24 @@ def count():
         return jsonify({'count': cursor.fetchone()[0]})
 
 
-@app.route('/sha256/<sha256>', methods=['GET'])
-def get_sha256(sha256):
+def validate_sha256(sha256):
+    if not sha256:
+        raise InvalidUsage('SHA256 empty', status_code=400)
     if len(sha256) != 64:
         raise InvalidUsage('SHA256 hash needs to be of length 64', status_code=400)
     if not all(c in string.hexdigits for c in sha256):
         raise InvalidUsage('SHA256 hash may only contain hex chars', status_code=400)
 
+
+@app.route('/sha256/<sha256>', methods=['GET'])
+def get_sha256(sha256):
+    validate_sha256(sha256)
     return jsonify({'TODO': 1})
 
 
 @app.route('/sha256/<sha256>', methods=['POST'])
 def persist(sha256):
-    if len(sha256) != 64:
-        raise InvalidUsage('SHA256 hash needs to be of length 64', status_code=400)
-    if not all(c in string.hexdigits for c in sha256):
-        raise InvalidUsage('SHA256 hash may only contain hex chars', status_code=400)
+    validate_sha256(sha256)
 
     json_data = request.get_json()
     if json_data is None:
