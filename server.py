@@ -44,8 +44,6 @@ def close_db(error):
 
 @app.route('/task', methods=['POST'])
 def get_task():
-    supported = ('PEMetadata', 'R2Disassembly')
-
     json_data = request.get_json()
     if json_data is None:
         raise InvalidUsage('JSON data could not be decoded (None)', status_code=400)
@@ -53,12 +51,20 @@ def get_task():
     connection = get_db()
     task_factory = TaskFactory(connection)
     task_request = task_factory.request_from_json(json_data)
-    if set(task_request.plugins) - set(supported):
+    sorted_types = task_factory.get_types_sorted_by_priority()
+    if set(task_request.plugins) - set(sorted_types):
         raise InvalidUsage('Invalid plugin array')
 
-    task = task_factory.random_unassigned(task_request)
-    connection.commit()
-    return jsonify(task.to_json() if task else {})
+    for task_type in sorted_types:
+        if task_type not in task_request.plugins:
+            continue
+        task = task_factory.random_unassigned(task_request, task_type)
+        if not task:
+            continue
+
+        connection.commit()
+        return jsonify(task.to_json() if task else {})
+    return None
 
 
 @app.errorhandler(InvalidUsage)
