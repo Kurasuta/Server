@@ -333,6 +333,27 @@ def store_metadata(cursor, kurasuta_database, sample):
                 i
             ))
 
+    if sample.source_id:
+        cursor.execute(
+            'INSERT INTO sample_has_source (sample_id, source_id) VALUES(%s, %s)',
+            (sample_id, sample.source_id)
+        )
+
+    if sample.tags:
+        for tag in sample.tags:
+            tag_id = kurasuta_database.ensure_row('sample_tag', 'name', tag)
+            cursor.execute(
+                'INSERT INTO sample_has_tag (sample_id, tag_id) VALUES(%s, %s)',
+                (sample_id, tag_id)
+            )
+    if sample.file_names:
+        for file_name in sample.file_names:
+            file_name_id = kurasuta_database.ensure_row('sample_file_name', 'name', file_name)
+            cursor.execute(
+                'INSERT INTO sample_has_file_name (sample_id, file_name_id) VALUES(%s, %s)',
+                (sample_id, file_name_id)
+            )
+
 
 if __name__ == '__main__':
     if 'RAVEN_CLIENT_STRING' in os.environ:
