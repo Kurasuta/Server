@@ -47,7 +47,7 @@ if args.file_name:
 
         meta = None
         if os.path.exists(file_name + '.json'):
-            with open(os.path.exists(file_name + '.json'), 'r') as fp:
+            with open(file_name + '.json', 'r') as fp:
                 j = json.loads(fp.read())
 
             meta = SampleMeta()
