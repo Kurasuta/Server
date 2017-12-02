@@ -40,9 +40,9 @@ if args.file_name:
     sample_source_repository = SampleSourceRepository(db.connection)
 
     for file_name in args.infile:
+        file_name = file_name.strip()
         with open(file_name, 'rb') as fp:
             content = fp.read()
-            fp.close()
         hash_sha256 = hashlib.sha256(content).hexdigest()
 
         meta = None
