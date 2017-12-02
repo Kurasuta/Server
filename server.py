@@ -58,7 +58,7 @@ def get_task():
     for task_type in sorted_types:
         if task_type not in task_request.plugins:
             continue
-        task = task_factory.random_unassigned(task_request, task_type)
+        task = task_factory.random_unassigned(task_type, task_request.task_consumer_id)
         if not task:
             continue
 
