@@ -1,0 +1,72 @@
+import shutil
+import hashlib
+import os
+import json
+import psycopg2
+import argparse
+import sys
+
+from lib.general import KurasutaSystem, KurasutaDatabase, SampleSourceRepository
+from lib.sample import SampleMeta
+
+parser = argparse.ArgumentParser()
+parser.add_argument('type', action='store', choices=['PEMetadata', 'R2Disassembly'])
+parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
+group = parser.add_mutually_exclusive_group(required=True)
+group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
+group.add_argument('--file_name', help='file to process', action='store_true')
+group.add_argument('--source_identifier', help='identifier (name) of source')
+args = parser.parse_args()
+
+db = KurasutaDatabase(psycopg2.connect(os.environ['DATABASE']))
+if args.existing_hash:
+    for hash_sha256 in args.infile:
+        hash_sha256 = hash_sha256.strip()
+        if not hash_sha256:
+            continue
+        if len([True for c in hash_sha256 if c in '0123456789abcdef']) != len(hash_sha256):
+            raise Exception('Argument "%s" is not a valid SHA256 hash')
+        if len(hash_sha256) != 64:
+            raise Exception('Argument "%s" is not of size 64')
+
+        db.create_task(args.type, hash_sha256)
+
+if args.file_name:
+    if 'KURASUTA_STORAGE' not in os.environ:
+        raise Exception('environment variable KURASUTA_STORAGE missing')
+
+    kurasuta_sys = KurasutaSystem(os.environ['KURASUTA_STORAGE'])
+    sample_source_repository = SampleSourceRepository(db.connection)
+
+    for file_name in args.infile:
+        with open(file_name, 'rb') as fp:
+            content = fp.read()
+            fp.close()
+        hash_sha256 = hashlib.sha256(content).hexdigest()
+
+        meta = None
+        if os.path.exists(file_name + '.json'):
+            with open(os.path.exists(file_name + '.json'), 'r') as fp:
+                j = json.load(fp)
+
+            meta = SampleMeta()
+            if 'tags' in j.keys():
+                assert isinstance(j['tags'], list)
+                meta.tags = j['tags']
+            if 'file_names' in j.keys():
+                assert isinstance(j['file_names'], list)
+                meta.tags = j['file_names']
+
+            if 'source_identifier' in j.keys() and args.source_identifier:
+                raise Exception('source_identifier set in meta json file and as argument')
+
+            if 'source_identifier' in j.keys():
+                meta.source_id = sample_source_repository.get_by_identifier(j['source_identifier'])
+            elif args.source_identifier:
+                meta.source_id = sample_source_repository.get_by_identifier(args.source_identifier)
+
+        db.create_task(args.type, hash_sha256, meta)
+        target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
+        kurasuta_sys.mkdir_p(target_folder)
+        shutil.move(file_name, os.path.join(target_folder, hash_sha256))
+db.connection.commit()
