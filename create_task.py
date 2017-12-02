@@ -48,7 +48,7 @@ if args.file_name:
         meta = None
         if os.path.exists(file_name + '.json'):
             with open(os.path.exists(file_name + '.json'), 'r') as fp:
-                j = json.load(fp)
+                j = json.loads(fp.read())
 
             meta = SampleMeta()
             if 'tags' in j.keys():
