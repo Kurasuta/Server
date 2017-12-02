@@ -16,6 +16,7 @@ group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
 group.add_argument('--file_name', help='file to process', action='store_true')
 group.add_argument('--source_identifier', help='identifier (name) of source')
+group.add_argument('--user_and_group', help='chown target file to this if specified')
 args = parser.parse_args()
 
 db = KurasutaDatabase(psycopg2.connect(os.environ['DATABASE']))
@@ -68,5 +69,7 @@ if args.file_name:
         db.create_task(args.type, hash_sha256, meta)
         target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
         kurasuta_sys.mkdir_p(target_folder)
+        if args.user_and_group:
+            shutil.chown(file_name, args.user_and_group, args.user_and_group)
         shutil.move(file_name, os.path.join(target_folder, hash_sha256))
 db.connection.commit()
