@@ -15,8 +15,8 @@ parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sy
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
 group.add_argument('--file_name', help='file to process', action='store_true')
-group.add_argument('--source_identifier', help='identifier (name) of source')
-group.add_argument('--user_and_group', help='chown target file to this if specified')
+parser.add_argument('--source_identifier', help='identifier (name) of source')
+parser.add_argument('--user_and_group', help='chown target file to this if specified')
 args = parser.parse_args()
 
 db = KurasutaDatabase(psycopg2.connect(os.environ['DATABASE']))
