@@ -58,13 +58,12 @@ if args.file_name:
                 assert isinstance(j['file_names'], list)
                 meta.tags = j['file_names']
 
-            if 'source_identifier' in j.keys() and args.source_identifier:
-                raise Exception('source_identifier set in meta json file and as argument')
-
             if 'source_identifier' in j.keys():
+                if args.source_identifier:
+                    raise Exception('source_identifier set in meta json file and as argument')
                 meta.source_id = sample_source_repository.get_by_identifier(j['source_identifier'])
-            elif args.source_identifier:
-                meta.source_id = sample_source_repository.get_by_identifier(args.source_identifier)
+        if args.source_identifier:
+            meta.source_id = sample_source_repository.get_by_identifier(args.source_identifier)
 
         db.create_task(args.type, hash_sha256, meta)
         target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
