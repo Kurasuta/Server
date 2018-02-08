@@ -45,12 +45,11 @@ if args.file_name:
             content = fp.read()
         hash_sha256 = hashlib.sha256(content).hexdigest()
 
-        meta = None
+        meta = SampleMeta()
         if os.path.exists(file_name + '.json'):
             with open(file_name + '.json', 'r') as fp:
                 j = json.loads(fp.read())
 
-            meta = SampleMeta()
             if 'tags' in j.keys():
                 assert isinstance(j['tags'], list)
                 meta.tags = j['tags']
