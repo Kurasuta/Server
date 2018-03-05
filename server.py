@@ -64,7 +64,7 @@ def get_task():
 
         connection.commit()
         return jsonify(task.to_json() if task else {})
-    return None
+    return jsonify({})
 
 
 @app.errorhandler(InvalidUsage)
