@@ -23,6 +23,12 @@ mapping = {
     'RAR': 'packed',
     'Zip': 'packed',
     'ELF': 'elf',
+    'MS Windows shortcut': 'lnk',
+    'CDFV2 Microsoft Outlook Message': 'doc',
+    'PHP script': 'code',
+    'perl': 'code',
+    'MS-DOS executable': 'msdox-exe',
+    'ISO-8859 text': 'txt',
 }
 for file_name in sys.argv[1:]:
     if os.path.isdir(file_name):
