@@ -28,6 +28,10 @@ mapping = {
     'perl': 'code',
     'MS-DOS executable': 'msdox-exe',
     'ISO-8859 text': 'txt',
+    'DOS executable': 'old-exe',
+    'COM executable': 'old-exe',
+    'MS Windows HtmlHelp Data': 'hlp',
+    'boot sector MS-MBR': 'boot',
 }
 for file_name in sys.argv[1:]:
     if os.path.isdir(file_name):
