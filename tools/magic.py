@@ -1,6 +1,5 @@
 import sys
 import os
-import hashlib
 import subprocess
 
 mapping = {
@@ -34,15 +33,16 @@ for file_name in sys.argv[1:]:
     if os.path.isdir(file_name):
         continue
     out, err = subprocess.Popen(['file', file_name], stdout=subprocess.PIPE).communicate()
-    _, magic = out.split(':')[:2]
-    hash_sha256 = hashlib.sha256(open(file_name, 'r').read()).hexdigest()
+    _, magic = out.decode('utf-8').split(':')[:2]
     found = False
-    for needle, directory_name in mapping.iteritems():
+    for needle, directory_name in mapping.items():
         if needle in magic:
             if not os.path.exists(directory_name):
                 os.mkdir(directory_name)
-            os.rename(file_name, os.path.join(directory_name, hash_sha256))
+            target = os.path.join(directory_name, os.path.basename(file_name))
+            # print('INFO Moving %s -> %s' % (file_name, target))
+            os.rename(file_name, target)
             found = True
             break
     if not found:
-        print('%s: %s (%s)' % (file_name, magic.strip(), hash_sha256))
+        print('WARNING %s: %s' % (file_name, magic.strip()))
