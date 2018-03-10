@@ -16,6 +16,7 @@ group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
 group.add_argument('--file_name', help='file to process', action='store_true')
 parser.add_argument('--skip_if_exists', help='skip if hash exists in storage', action='store_true')
+parser.add_argument('--skipped_hashes_filename', help='to add the source manually for example', default=None)
 parser.add_argument('--source_identifier', help='identifier (name) of source')
 parser.add_argument('--user_and_group', help='chown target file to this if specified')
 args = parser.parse_args()
@@ -40,6 +41,11 @@ if args.file_name:
     kurasuta_sys = KurasutaSystem(os.environ['KURASUTA_STORAGE'])
     sample_source_repository = SampleSourceRepository(db.connection)
 
+    if args.skipped_hashes_filename is not None:
+        skipped_hashes_file = open(args.skipped_hashes_filename, 'a')
+    else:
+        skipped_hashes_file = None
+
     for file_name in args.infile:
         # calculate hash
         file_name = file_name.strip()
@@ -51,6 +57,8 @@ if args.file_name:
         target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
         target_file_name = os.path.join(target_folder, hash_sha256)
         if args.skip_if_exists and os.path.exists(target_file_name):
+            if skipped_hashes_file:
+                skipped_hashes_file.write(hash_sha256)
             continue
 
         # read metadata, if it exists
