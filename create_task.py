@@ -58,7 +58,7 @@ if args.file_name:
         target_file_name = os.path.join(target_folder, hash_sha256)
         if args.skip_if_exists and os.path.exists(target_file_name):
             if skipped_hashes_file:
-                skipped_hashes_file.write(hash_sha256)
+                skipped_hashes_file.write('%s\n' % hash_sha256)
             continue
 
         # read metadata, if it exists
