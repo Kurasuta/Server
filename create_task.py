@@ -50,7 +50,7 @@ if args.file_name:
         # calculate target file name
         target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
         target_file_name = os.path.join(target_folder, hash_sha256)
-        if args.skip_if_existing and os.path.exists(target_file_name):
+        if args.skip_if_exists and os.path.exists(target_file_name):
             continue
 
         # read metadata, if it exists
