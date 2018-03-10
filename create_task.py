@@ -14,6 +14,7 @@ parser.add_argument('type', action='store', choices=['PEMetadata', 'R2Disassembl
 parser.add_argument('infile', nargs='?', type=argparse.FileType('r'), default=sys.stdin)
 group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
+group.add_argument('--skip_if_existing', help='skip if hash exists in storage', action='store_true')
 group.add_argument('--file_name', help='file to process', action='store_true')
 parser.add_argument('--source_identifier', help='identifier (name) of source')
 parser.add_argument('--user_and_group', help='chown target file to this if specified')
@@ -40,11 +41,19 @@ if args.file_name:
     sample_source_repository = SampleSourceRepository(db.connection)
 
     for file_name in args.infile:
+        # calculate hash
         file_name = file_name.strip()
         with open(file_name, 'rb') as fp:
             content = fp.read()
         hash_sha256 = hashlib.sha256(content).hexdigest()
 
+        # calculate target file name
+        target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
+        target_file_name = os.path.join(target_folder, hash_sha256)
+        if args.skip_if_existing and os.path.exists(target_file_name):
+            continue
+
+        # read metadata, if it exists
         meta = SampleMeta()
         if os.path.exists(file_name + '.json'):
             with open(file_name + '.json', 'r') as fp:
@@ -64,10 +73,10 @@ if args.file_name:
         if args.source_identifier:
             meta.source_id = sample_source_repository.get_by_identifier(args.source_identifier)
 
+        # create task and move file
         db.create_task(args.type, hash_sha256, meta)
-        target_folder = kurasuta_sys.get_hash_dir(hash_sha256)
         kurasuta_sys.mkdir_p(target_folder)
         if args.user_and_group:
             shutil.chown(file_name, args.user_and_group, args.user_and_group)
-        shutil.move(file_name, os.path.join(target_folder, hash_sha256))
+        shutil.move(file_name, target_file_name)
 db.connection.commit()
