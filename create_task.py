@@ -16,6 +16,7 @@ group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument('--existing_hash', help='existing hash to process', action='store_true')
 group.add_argument('--file_name', help='file to process', action='store_true')
 parser.add_argument('--skip_if_exists', help='skip if hash exists in storage', action='store_true')
+parser.add_argument('--destructive', help='moves file to storage and deletes it if it already exists', action='store_true')
 parser.add_argument('--skipped_hashes_filename', help='to add the source manually for example', default=None)
 parser.add_argument('--source_identifier', help='identifier (name) of source')
 parser.add_argument('--user_and_group', help='chown target file to this if specified')
@@ -59,6 +60,8 @@ if args.file_name:
         if args.skip_if_exists and os.path.exists(target_file_name):
             if skipped_hashes_file:
                 skipped_hashes_file.write('%s\n' % hash_sha256)
+            if args.destructive:
+                os.remove(file_name)
             continue
 
         # read metadata, if it exists
@@ -86,5 +89,8 @@ if args.file_name:
         kurasuta_sys.mkdir_p(target_folder)
         if args.user_and_group:
             shutil.chown(file_name, args.user_and_group, args.user_and_group)
-        shutil.move(file_name, target_file_name)
+        if args.destructive:
+            shutil.move(file_name, target_file_name)
+        else:
+            shutil.copyfile(file_name, target_file_name)
 db.connection.commit()
