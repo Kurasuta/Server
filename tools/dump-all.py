@@ -3,8 +3,8 @@ import os
 import psycopg2
 import logging
 import argparse
-from lib.repository import SampleRepository
-from lib.sample import JsonFactory
+from ..lib.repository import SampleRepository
+from ..lib.sample import JsonFactory
 
 logging.basicConfig()
 logger = logging.getLogger('KurasutaDumper')
