@@ -30,6 +30,7 @@ with db.cursor() as cursor:
     cursor.execute('SELECT id FROM sample')
     logger.info('Found %i ids.' % cursor.rowcount)
     for row in cursor:
-        sample = sample_repository.by_ids([row[0]])
+        samples = sample_repository.by_ids([row[0]])
         with open(target_file_name, 'a') as fp:
-            fp.write('%s\n' % json_factory.from_sample(sample))
+            for sample in samples:
+                fp.write('%s\n' % json_factory.from_sample(sample))
