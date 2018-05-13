@@ -31,6 +31,7 @@ with db.cursor() as cursor:
     logger.info('Found %i ids.' % cursor.rowcount)
     for row in cursor:
         samples = sample_repository.by_ids([row[0]])
+        logger.info('Dumped sample with id %s.' % row[0])
         with open(target_file_name, 'a') as fp:
             for sample in samples:
                 fp.write('%s\n' % json_factory.from_sample(sample))
