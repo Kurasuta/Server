@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 import os
+import sys
 import psycopg2
 import logging
 import argparse
-from ..lib.repository import SampleRepository
-from ..lib.sample import JsonFactory
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from lib.repository import SampleRepository
+from lib.sample import JsonFactory
 
 logging.basicConfig()
 logger = logging.getLogger('KurasutaDumper')
