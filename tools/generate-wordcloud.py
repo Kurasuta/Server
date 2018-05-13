@@ -18,10 +18,10 @@ tasks = {
         SELECT resource_name.content FROM section
         LEFT JOIN section_name ON (section_name.id = section.name_id)
     ''',
-    # 'pdb-paths': '''
-    #     SELECT path.content FROM debug_directory
-    #     LEFT JOIN path ON (path.id = debug_directory.path_id)
-    # ''',
+    'pdb-paths': '''
+        SELECT path.content FROM debug_directory
+        LEFT JOIN path ON (path.id = debug_directory.path_id)
+    ''',
 }
 parser = argparse.ArgumentParser()
 parser.add_argument('image_directory')
