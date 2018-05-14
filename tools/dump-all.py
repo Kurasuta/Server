@@ -23,7 +23,7 @@ target_file_name = args.target_file_name
 existing_ids = []
 if os.path.exists(target_file_name):
     with open(target_file_name, 'r') as fp:
-        for line in fp.readline():
+        for line in fp:
             line = line.strip()
             if not line:
                 continue
@@ -43,5 +43,5 @@ with db.cursor() as cursor:
         samples = sample_repository.by_ids([id])
         with open(target_file_name, 'a') as fp:
             for sample in samples:
-                fp.write('%s\n' % json_factory.from_sample(sample))
+                fp.write('%s\n' % json.dumps(json_factory.from_sample(sample)))
         logger.info('Dumped sample with id %s.' % id)
