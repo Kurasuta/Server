@@ -41,7 +41,8 @@ with db.cursor() as cursor:
         if id in existing_ids:
             continue
         samples = sample_repository.by_ids([id])
+        logger.info('Dumping sample with id %s...' % id)
         with open(target_file_name, 'a') as fp:
             for sample in samples:
                 fp.write('%s\n' % json.dumps(json_factory.from_sample(sample)))
-        logger.info('Dumped sample with id %s.' % id)
+logger.info('All done.')
