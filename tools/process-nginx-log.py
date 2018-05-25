@@ -1,5 +1,10 @@
 import argparse
+import sys
+import os
 from datetime import datetime, timedelta
+
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..'))
+
 from lib.zabbix import ZabbixSender
 
 parser = argparse.ArgumentParser()
@@ -31,13 +36,15 @@ with open(args.log_file, 'r') as fp:
         request_times.append(float(s[14]))
 
 zs = ZabbixSender()
-zs.send_item('kurasuta.backend_rest_api.max_response_time', int(max(request_times)))
-zs.send_item('kurasuta.backend_rest_api.avg_response_time', int(sum(request_times) / float(len(request_times))))
-known_status_codes = [200, 504]
-other_status_codes = 0
-for status_code in status_codes:
-    if status_code in known_status_codes:
-        zs.send_item('kurasuta.backend_rest_api.response_count_%i' % status_code, status_codes[status_code])
-    else:
-        other_status_codes += status_codes[status_code]
-zs.send_item('kurasuta.backend_rest_api.response_count_other', other_status_codes)
+if request_times:
+    zs.send_item('kurasuta.backend_rest_api.max_response_time', int(max(request_times)))
+    zs.send_item('kurasuta.backend_rest_api.avg_response_time', int(sum(request_times) / float(len(request_times))))
+if status_codes:
+    known_status_codes = [200, 504]
+    other_status_codes = 0
+    for status_code in status_codes:
+        if status_code in known_status_codes:
+            zs.send_item('kurasuta.backend_rest_api.response_count_%i' % status_code, status_codes[status_code])
+        else:
+            other_status_codes += status_codes[status_code]
+    zs.send_item('kurasuta.backend_rest_api.response_count_other', other_status_codes)
