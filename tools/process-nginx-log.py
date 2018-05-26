@@ -40,7 +40,7 @@ if request_times:
     zs.send_item('kurasuta.backend_rest_api.max_response_time', int(max(request_times)))
     zs.send_item('kurasuta.backend_rest_api.avg_response_time', int(sum(request_times) / float(len(request_times))))
 if status_codes:
-    known_status_codes = [200, 504]
+    known_status_codes = [200, 502, 504]
     other_status_codes = 0
     for status_code in status_codes:
         if status_code in known_status_codes:
