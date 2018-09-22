@@ -1,5 +1,4 @@
 from pyArango.connection import Connection
-from pyArango.theExceptions import CreationError
 import os
 import logging
 import json
