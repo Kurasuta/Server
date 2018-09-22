@@ -81,16 +81,62 @@ with open(hash_file) as fp:
 
         with db.cursor() as cursor:
             cursor.execute('SELECT id FROM sample WHERE (hash_sha256 = %s)', (sha256,))
-            sample = sample_repository.by_ids([(cursor.fetchall()[0][0])])[0]
+            sample_id = cursor.fetchall()[0][0]
+            sample = sample_repository.by_ids([sample_id])[0]
 
-        json_sample = json_factory.from_sample(sample)
-        if 'sections' in json_sample:
-            del json_sample['sections']
-        if 'resources' in json_sample:
-            del json_sample['resources']
-        arango_sample = arango_database['sample'].createDocument(initValues=json_sample)
-        arango_sample._key = sample.hash_sha256
-        arango_sample.save()
+        try:
+            arango_sample = arango_database['sample'][sample.hash_sha256]
+        except KeyError:
+            json_sample = json_factory.from_sample(sample)
+            if 'sections' in json_sample:
+                del json_sample['sections']
+            if 'resources' in json_sample:
+                del json_sample['resources']
+
+            arango_sample = arango_database['sample'].createDocument(initValues=json_sample)
+            arango_sample._key = sample.hash_sha256
+            arango_sample.save()
+
+        with db.cursor() as cursor:
+            cursor.execute('''
+                SELECT t.name
+                FROM sample_tag t
+                LEFT JOIN sample_has_tag ht ON (ht.tag_id = t.id)
+                WHERE (ht.sample_id = %s)
+            ''', (sample_id,))
+            for row in cursor.fetchall():
+                json_tag = {'name': row[0]}
+                query = arango_database['tag'].fetchFirstExample(json_tag)
+                if len(query):
+                    arango_tag = query[0]
+                else:
+                    arango_tag = arango_database['tag'].createDocument(initValues=json_tag)
+                    arango_tag.save()
+                edge = arango_database['has_tag'].createDocument(initValues={
+                    '_from': 'sample/%s' % sample.hash_sha256,
+                    '_to': arango_tag._id,
+                })
+                edge.save()
+
+            cursor.execute('''
+                SELECT s.identifier
+                FROM sample_source s
+                LEFT JOIN sample_has_source hs ON (hs.source_id = s.id)
+                WHERE (hs.sample_id = %s)
+            ''', (sample_id,))
+            for row in cursor.fetchall():
+                json_source = {'name': row[0]}
+                query = arango_database['source'].fetchFirstExample(json_source)
+                if len(query):
+                    arango_source = query[0]
+                else:
+                    arango_source = arango_database['source'].createDocument(initValues=json_source)
+                    arango_source.save()
+                edge = arango_database['has_source'].createDocument(initValues={
+                    '_from': 'sample/%s' % sample.hash_sha256,
+                    '_to': arango_source._id,
+                })
+                edge.save()
 
         for i, section in enumerate(sample.sections):
             try:
