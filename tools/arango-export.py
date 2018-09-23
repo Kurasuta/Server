@@ -98,6 +98,7 @@ for hashes_pos in range(len(hashes)):
         next_one_exists = hashes_pos + 1 < len(hashes) \
                           and exists_in_collection(hashes[hashes_pos + 1], arango_database['sample'])
         if current_one_exists and next_one_exists:
+            skipped += 1
             continue
 
         # if next hash does not exist in ArangoDB but current one does, delete all relations for the current one and
@@ -114,7 +115,6 @@ for hashes_pos in range(len(hashes)):
                     doc.delete()
             arango_sample = arango_database['sample'][sha256]
             running_state = IMPORT_STATE_RUNNING
-        skipped += 1
 
     with db.cursor() as cursor:
         cursor.execute('SELECT id FROM sample WHERE (hash_sha256 = %s)', (sha256,))
