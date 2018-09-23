@@ -47,7 +47,10 @@ if not os.path.exists(hash_file):
 
 state_file = StateFile(hash_file, state_file_name)
 state = state_file.load()
-run_import = state is None
+IMPORT_STATE_SKIPPING_STATE_FILE = 0
+IMPORT_STATE_SKIPPING_EXISTS = 1
+IMPORT_STATE_RUNNING = 2
+running_state = IMPORT_STATE_RUNNING if state is None else IMPORT_STATE_SKIPPING_STATE_FILE
 imported = 0
 skipped = 0
 
@@ -69,31 +72,49 @@ with open(hash_file) as fp:
     hashes = [line.strip() for line in fp if line.strip()]
 logger.info('Found %i hashes' % len(hashes))
 
+
+def exists_in_collection(key, collection):
+    # this can go away as soon as https://github.com/tariqdaouda/pyArango/issues/119 is resolved
+    try:
+        doc = collection[key]
+    except KeyError:
+        return False
+    return True
+
+
 for hashes_pos in range(len(hashes)):
     sha256 = hashes[hashes_pos]
+    arango_sample = None
     if sha256 == state:
-        logger.info('Skipped %i hashes, starting import now' % skipped)
-        run_import = True
+        logger.info('Skipped %i hashes because of state file.' % skipped)
+        skipped = 0
+        running_state = IMPORT_STATE_SKIPPING_EXISTS
         continue
-    elif not run_import:
+    elif running_state == IMPORT_STATE_SKIPPING_STATE_FILE:
         skipped += 1
         continue
+    elif running_state == IMPORT_STATE_SKIPPING_EXISTS:
+        current_one_exists = exists_in_collection(sha256, arango_database['sample'])
+        next_one_exists = hashes_pos + 1 < len(hashes) \
+                          and exists_in_collection(hashes[hashes_pos + 1], arango_database['sample'])
+        if current_one_exists and next_one_exists:
+            continue
 
-    current_one_exists = sha256 in arango_database['sample']
-    next_one_exists = hashes_pos + 1 < len(hashes) and hashes[hashes_pos + 1] in arango_database['sample']
-    if current_one_exists and next_one_exists:
-        continue
-
-    arango_sample = None
-    # if next hash does not exist in ArangoDB but current one does, delete all relations for the current one and start
-    # import with current one. The script will skip insertion of the sample itself and potentially also of its sections
-    # and resources and ensure that edges are correctly (re-)created.
-    if not next_one_exists and current_one_exists:
-        for sample_edge_collection in ['has_resource', 'has_section', 'has_tag', 'has_source']:
-            query = arango_database['sample_edge_collection'].fetchByExample({'_from': 'sample/%s' % sha256})
-            for doc in query:
-                doc.delete()
-        arango_sample = arango_database['sample'][sha256]
+        # if next hash does not exist in ArangoDB but current one does, delete all relations for the current one and
+        # start import with current one. The script will skip insertion of the sample itself and potentially also of
+        # its sections and resources and ensure that edges are correctly (re-)created.
+        if not next_one_exists and current_one_exists:
+            logger.info('Skipped %i hashes because they existed, starting import now.' % skipped)
+            for sample_edge_collection in ['has_resource', 'has_section', 'has_tag', 'has_source']:
+                query = arango_database[sample_edge_collection].fetchByExample(
+                    {'_from': 'sample/%s' % sha256},
+                    batchSize=100
+                )
+                for doc in query:
+                    doc.delete()
+            arango_sample = arango_database['sample'][sha256]
+            running_state = IMPORT_STATE_RUNNING
+        skipped += 1
 
     with db.cursor() as cursor:
         cursor.execute('SELECT id FROM sample WHERE (hash_sha256 = %s)', (sha256,))
