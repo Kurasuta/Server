@@ -89,7 +89,7 @@ def persist(sha256):
 
     sample = SampleFactory().from_json(json_data)
     if sha256 != sample.hash_sha256:
-        raise InvalidUsage('SHA256 in URL and body missmatch', status_code=400)
+        raise InvalidUsage('SHA256 in URL and body mismatch', status_code=400)
 
     with connection.cursor() as cursor:
         cursor.execute('''SELECT id FROM sample WHERE (hash_sha256 = %s)''', (sample.hash_sha256,))
